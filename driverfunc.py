@@ -11,7 +11,7 @@ def main():
 	if(puzzle_mode == '1'):
 		default_mode()
 	elif(puzzle_mode == '2'):
-		custom_mode_input()
+		custom_mode()
 	else:
 		print('Please enter a valid input!\n')
 		main()
@@ -83,6 +83,31 @@ def default_mode():
 	choose_search_method(start_state)
 
 
+#Function for choosing a custom-made puzzle 
+def custom_mode():
+	print('Enter the number of rows (same as columns) to use for your puzzle:\n')
+
+	rows = int(input())
+
+	custom_input = []
+
+	if(rows>0):
+		print('**** NOTE: SEPARATE NUMBERS BY SPACE ****')
+		#REFERED : https://stackoverflow.com/questions/40336601/python-appending-array-to-an-array
+		for el in range(1,rows+1):
+			print('Enter row number: ' , str(el))
+			el1 = input()
+			#REFERED : https://docs.python.org/3/tutorial/datastructures.html#list-comprehensions
+			el1 = [int(i) for i in el1.split()]
+			custom_input.append(el1)
+
+		choose_search_method(custom_input)
+
+	else:
+		print('Oops! Please input a valid number!')
+		custom_mode()
+
+
 #Function for choosing a search method
 def choose_search_method(start_state):
 	
@@ -113,7 +138,14 @@ def choose_search_method(start_state):
 		else:
 			choose_search_method(start_state)
 
-def uniform_cost_search(start_state):
+#def uniform_cost_search(start_state):
 	
+#def astar_manhattan(start_state):
+
+#def astar_misplaced_tile(start_state):
+
+#def Node(self):
+
+
 
 main()
