@@ -1,3 +1,4 @@
+#Main function for taking inputs regarding mode of puzzle
 def main():
 	print('Welcome to my 8-puzzle solver!\n Select one of the following numbers for the puzzle: \n')
 	print('1 - Default puzzle or 2 - Create your own custom puzzle!\n')
@@ -50,6 +51,8 @@ def default_mode():
 
 
 	def_mode = input()
+
+
 
 
 
