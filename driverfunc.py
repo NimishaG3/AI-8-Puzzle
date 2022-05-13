@@ -1,4 +1,5 @@
 import heapq as heap #For queueing
+import copy
 
 #Main function for taking inputs regarding mode of puzzle
 def main():
@@ -122,7 +123,7 @@ def custom_mode():
 
 
 #Function for choosing a search method
-def choose_search_method(start_state):
+def choose_search_method(start_state, final_state):
 	
 	print('Choose the search method you would like to use :\n')
 	
@@ -133,11 +134,11 @@ def choose_search_method(start_state):
 	search_type = input()
 
 	if(search_type == '1'):
-		uniform_cost_search(start_state)
+		uniform_cost_search(start_state, final_state)
 	elif(search_type == '2'):
-		astar_manhattan(start_state)
+		astar_manhattan(start_state, final_state)
 	elif(search_type == '3'):
-		astar_misplaced_tile(start_state)
+		astar_misplaced_tile(start_state, final_state)
 	else:
 		print('Please enter a valid input!\n')
 		print('Enter 1 to return to the main menu. Press 2 to return to the default mode menu. Press any other key to restart the search method menu!\n')
@@ -182,11 +183,121 @@ def manhattan_distance(start_state, final_state):
 
 class Node:
 	
-	def __init__(self,heuristic,depth,state):
-		self.heuristic = heuristic
-		self.depth = depth
-		self.state = state
-		self.cost = depth+heuristic
+	def __init__(self,h=0,g=0,curr_state=0,parent=None):
+		"""
+		Here, h = Cost to goal, g = Cost from start, curr_state = current state of the puzzle
+		"""
+		self.h = h
+		self.g = g
+		self.curr_state = curr_state #Current state of the puzzle, changes after every operation
+		self.parent = parent #Added for ease of tracing later on
+		self.children = []
+		self.f = h+g
+
+
+	#Function to print and count no. of nodes traced till result using the parent node of each child selected
+	def print_nodes_traced(self):
+
+		x = self.curr_state
+		trace = 0
+		
+		while(x != None):
+			print(x.curr_state)
+			trace += 1
+			x = x.parent
+
+		print('Number of nodes traced : ' , trace, '\n')
+
+	#Referred https://stackoverflow.com/questions/1061283/lt-instead-of-cmp 
+	#Function to compare costs of two nodes and return lowest cost
+	def __lt__(self,other):
+		return self.f < other.f
+
+
+	def tile_operators(self):
+		valid_states = []
+		puzzle = self.curr_state
+		
+		#Variables to depict coordinates of 0 in the puzzle - initialised as 0,0
+		m = 0
+		n = 0
+
+		#Find the coordinates of 0 in the 2D array
+
+		for i in range (0,len(puzzle)):
+			for j in range (0,len(puzzle)):
+				if(puzzle[i][j] == 0):
+					m = i
+					n = j
+					break
+
+
+		#Moving left			
+		if(n!=0):
+			newstate = copy.deepcopy(puzzle)
+			newstate[m][n] = newstate[m][n-1]
+        	newstate[m][n-1] = 0
+
+        	#Check if this state is same as it's parent and add only if false
+        	#Referenced https://stackoverflow.com/a/6105826 to convert state to set for ease of comparison
+
+        	newstatelist = set(map(tuple, newstate))
+        	parentlist = set(map(tuple, self.parent.curr_state))
+
+        	if(newstatelist != parentlist):
+        		valid_states.append(newstate)
+
+        #Moving up		
+        if(m!=0):
+        	newstate = copy.deepcopy(puzzle)
+			newstate[m][n] = newstate[m-1][n]
+        	newstate[m-1][n] = 0
+
+        	#Check if this state is same as it's parent and add only if false
+        	#Referenced https://stackoverflow.com/a/6105826 to convert state to set for ease of comparison
+
+        	newstatelist = set(map(tuple, newstate))
+        	parentlist = set(map(tuple, self.parent.curr_state))
+
+        	if(newstatelist != parentlist):
+        		valid_states.append(newstate)
+
+        #Moving Right
+        if(n!=(len(puzzle)-1)):
+        	newstate = copy.deepcopy(puzzle)
+			newstate[m][n] = newstate[m][n+1]
+        	newstate[m][n+1] = 0
+
+        	#Check if this state is same as it's parent and add only if false
+        	#Referenced https://stackoverflow.com/a/6105826 to convert state to set for ease of comparison
+
+        	newstatelist = set(map(tuple, newstate))
+        	parentlist = set(map(tuple, self.parent.curr_state))
+
+        	if(newstatelist != parentlist):
+        		valid_states.append(newstate)
+
+        #Moving Down
+        if(m!=(len(puzzle)-1)):
+        	newstate = copy.deepcopy(puzzle)
+			newstate[m][n] = newstate[m+1][n]
+        	newstate[m+1][n] = 0
+
+        	#Check if this state is same as it's parent and add only if false
+        	#Referenced https://stackoverflow.com/a/6105826 to convert state to set for ease of comparison
+
+        	newstatelist = set(map(tuple, newstate))
+        	parentlist = set(map(tuple, self.parent.curr_state))
+
+        	if(newstatelist != parentlist):
+        		valid_states.append(newstate)
+
+
+
+        return valid_states
+
+
+
 
 
 main()
