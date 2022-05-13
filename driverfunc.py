@@ -1,5 +1,4 @@
-#Defining the goal state as a global variable to avoid declaring it in every function separately
-final_state = [[1,2,3], [4,5,6], [7,8,0]]
+import heapq as heap #For queueing
 
 #Main function for taking inputs regarding mode of puzzle
 def main():
@@ -19,6 +18,9 @@ def main():
 
 #Function for choosing a puzzle from the pre-defined ones
 def default_mode():
+
+	#For the default mode, goal state is 3x3 and can be pre-defined
+	final_state = [[1,2,3], [4,5,6], [7,8,0]]
 	
 	easy_peasy = [[1,2,3], [4,5,6], [7,8,0]]
 	just_easy = [[1,2,3], [4,5,6], [0,7,8]]
@@ -28,7 +30,6 @@ def default_mode():
 	oh_boy = [[0,7,2], [4,6,1], [3,5,8]]
 	
 	print('Choose one of the following default options:\n')
-	
 	print('1 - Easy Peasy : ')
 	for el in easy_peasy:
 		print('[', *el, ']')
@@ -80,7 +81,7 @@ def default_mode():
 		else:
 			default_mode()
 
-	choose_search_method(start_state)
+	choose_search_method(start_state, final_state)
 
 
 #Function for choosing a custom-made puzzle 
@@ -90,6 +91,18 @@ def custom_mode():
 	rows = int(input())
 
 	custom_input = []
+
+	#Creating and initializing the custom final state using these links :
+	#https://www.geeksforgeeks.org/python-using-2d-arrays-lists-the-right-way/
+	#https://stackoverflow.com/a/20114599
+	final_state = [[(j + 1) + (rows * i) for j in range(rows)] for i in range(rows)]
+	final_state[rows-1][rows-1] = 0
+
+
+	print('Custom goal state for' , rows, 'x', rows, 'puzzle is: \n')
+	for el in final_state:
+		print('[', *el, ']')
+
 
 	if(rows>0):
 		print('**** NOTE: SEPARATE NUMBERS BY SPACE ****')
@@ -101,7 +114,7 @@ def custom_mode():
 			el1 = [int(i) for i in el1.split()]
 			custom_input.append(el1)
 
-		choose_search_method(custom_input)
+		choose_search_method(custom_input, final_state)
 
 	else:
 		print('Oops! Please input a valid number!')
@@ -138,14 +151,42 @@ def choose_search_method(start_state):
 		else:
 			choose_search_method(start_state)
 
-#def uniform_cost_search(start_state):
+def count_misplaced_tiles(start_state, final_state):
+	heuristic = 0
+	for i in range (0,len(start_state)):
+		for j in range (0,len(start_state)):
+			if(start_state[i][j] != final_state[i][j] and start_state[i][j] != 0):
+				heuristic +=1
+
+	return heuristic
+
+def manhattan_distance(start_state, final_state):
+	heuristic = 0
+
+	#Referred https://www.devcubicle.com/find-the-length-of-2d-array-in-python/#:~:text=Use%20len(arr)%20to%20find,of%20elements%20is%20rows%20*%20columns
+	#Using three loops : First to loop over all the elements of the 2D array, other two to get locations of each element
+	for i in range(1,len(start_state)*len(start_state[0])):
+		for j in range (0,len(start_state)):
+			for k in range (0,len(start_state)):
+				if(i == start_state[j][k]):
+					start_row = j
+					start_col = k
+				if(i == final_state[j][k]):
+					final_row = j
+					final_col = k
+
+		heuristic += (abs(final_row - start_row) + abs(final_col - start_col))
+
+	return heuristic
+
+
+class Node:
 	
-#def astar_manhattan(start_state):
-
-#def astar_misplaced_tile(start_state):
-
-#def Node(self):
-
+	def __init__(self,heuristic,depth,state):
+		self.heuristic = heuristic
+		self.depth = depth
+		self.state = state
+		self.cost = depth+heuristic
 
 
 main()
