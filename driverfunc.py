@@ -1,5 +1,6 @@
 import heapq as heap #For queueing
 import copy
+import time
 
 #Main function for taking inputs regarding mode of puzzle
 def main():
@@ -134,7 +135,12 @@ def choose_search_method(start_state, final_state):
 	search_type = input()
 
 	if(search_type > str(0) and search_type < str(4)):
+		#Referred https://stackoverflow.com/a/14452178
+		#https://docs.python.org/3/library/time.html#time.process_time
+		start = time.process_time()
 		tree_and_heap_computation(start_state, final_state, search_type)
+		print(time.process_time() - start) 
+		print('milliseconds taken')
 
 	else:
 		print('Please enter a valid input!\n')
@@ -191,7 +197,7 @@ def tree_and_heap_computation(start_state, final_state, search_type):
 				continue
 
 			for newchildstate in updated_child_list:
-				newchildnode = Node(curr_state = newchildstate)
+				newchildnode = Node(curr_state = newchildstate, g=0, h=0)
 
 				#If this new child node already exists in our queue or already has been visited, we can just continue and don't need to do further calculations for this node
 				#LIMITING REPEATED STATES
@@ -200,17 +206,14 @@ def tree_and_heap_computation(start_state, final_state, search_type):
 				elif(visited_states and newchildnode in visited_states):
 					continue 
 				else:
-					if(search_type == 1):
+					if(search_type == str(1)):
 						newchildnode.h = 0 #Uniform Cost Search
-					elif(search_type == 2):
+					elif(search_type == str(2)):
 						newchildnode.h = manhattan_distance(newchildnode.curr_state,final_state) #AStar with Manhattan Distance heuristic
 					else:
 						newchildnode.h = count_misplaced_tiles(newchildnode.curr_state, final_state) #AStar with Misplaced Tile heuristic
 
-				#Adding this new node (newchildnode) as child of the current node (curr_node)
-				newchildnode.parent = curr_node
-				newchildnode.g = curr_node.g + 1 #Adding 1 as cost of expanding and adding a child
-				curr_node.children.append(newchildnode)
+				curr_node.add_as_child_node(node = newchildnode)
 
 				heap.heappush(queue,newchildnode)
 
@@ -250,7 +253,7 @@ def manhattan_distance(start_state, final_state):
 	return heuristic
 
 def state_equality(state1, state2):
-	#Referrec : https://stackoverflow.com/questions/952914/how-to-make-a-flat-list-out-of-a-list-of-lists
+	#Referred : https://stackoverflow.com/questions/952914/how-to-make-a-flat-list-out-of-a-list-of-lists
     # Flatten the list of lists for easy comparison
     result_list1 = [el for subel in state1 for el in subel]
     result_list2 = [el for subel in state2 for el in subel]
@@ -259,16 +262,18 @@ def state_equality(state1, state2):
 
 class Node:
 	
-	def __init__(self,h=0,g=0,curr_state=0,parent=None,f=0):
-		"""
-		Here, h = Cost to goal, g = Cost from start, curr_state = current state of the puzzle
-		"""
+	def __init__(self,h=0,g=0,curr_state=0,parent=None):
+		#Here, h = Cost to goal, g = Cost from start, curr_state = current state of the puzzle
 		self.h = h
 		self.g = g
 		self.curr_state = curr_state #Current state of the puzzle, changes after every operation
 		self.parent = parent #Added for ease of tracing later on
 		self.children = []
-		self.f = self.h+self.g
+
+	def add_as_child_node(self, node, cost=1): #Here cost of 1 is the cost to expand this node
+		node.g = self.g + cost # extend the child'd cost from start
+		self.children.append(node)
+		node.parent = self
 
 
 	#Function to print and count no. of nodes traced till result using the parent node of each child selected
@@ -288,17 +293,17 @@ class Node:
 	#Referred https://stackoverflow.com/a/7803240
 	#Function to compare costs of two nodes, used to sort nodes in the heap by cost
 	def __lt__(self,other):
-		return self.f < other.f
+		return self.g + self.h < other.g + other.h
 
+	#Function to calculate the total f value as h+g
+	def f_calculator(self):
+		return (self.g + self.f)
+
+	#Like lt function, this is used to compare equality of nodes in the heap
 	def __eq__(self,other):
 		return self.curr_state == other.curr_state
 
-	def add_as_child_node(self, child_state):
-		child_state.parent = self
-		child.state.g = parent_state.g + 1 #Adding 1 as cost of expanding and adding a child
-		self.children.append(child_state)
-
-
+	#Function to define movements of the 0 tile
 	def tile_operators(self):
 		valid_states = []
 		puzzle = self.curr_state
@@ -323,9 +328,8 @@ class Node:
 			newstate[m][n] = newstate[m][n-1]
 			newstate[m][n-1] = 0
 
-        	#Check if this state is same as it's parent and add only if false
-        	#Referenced https://stackoverflow.com/a/6105826 to convert state to set for ease of comparison
-			if self.parent and state_equality(newstate, self.parent.curr_state):
+        	#Check if this state is same as it's parent, parent is not null and add only if false
+			if (self.parent and state_equality(newstate, self.parent.curr_state)):
 				valid_states.append(None) 
 			else:
 				valid_states.append(newstate)
@@ -336,9 +340,7 @@ class Node:
 			newstate[m][n] = newstate[m-1][n]
 			newstate[m-1][n] = 0
 
-        	#Check if this state is same as it's parent and add only if false
-        	#Referenced https://stackoverflow.com/a/6105826 to convert state to set for ease of comparison
-			if self.parent and state_equality(newstate, self.parent.curr_state):
+			if (self.parent and state_equality(newstate, self.parent.curr_state)):
 				valid_states.append(None)
 			else:
 				valid_states.append(newstate)
@@ -348,10 +350,7 @@ class Node:
 			newstate = copy.deepcopy(puzzle)
 			newstate[m][n] = newstate[m][n+1]
 			newstate[m][n+1] = 0
-
-        	#Check if this state is same as it's parent and add only if false
-        	#Referenced https://stackoverflow.com/a/6105826 to convert state to set for ease of comparison
-			if self.parent and state_equality(newstate, self.parent.curr_state):
+			if (self.parent and state_equality(newstate, self.parent.curr_state)):
 				valid_states.append(None) 
 			else:
 				valid_states.append(newstate)
@@ -362,10 +361,7 @@ class Node:
 			newstate[m][n] = newstate[m+1][n]
 			newstate[m+1][n] = 0
 
-        	#Check if this state is same as it's parent and add only if false
-        	#Referenced https://stackoverflow.com/a/6105826 to convert state to set for ease of comparison
-
-			if self.parent and state_equality(newstate, self.parent.curr_state):
+			if (self.parent and state_equality(newstate, self.parent.curr_state)):
 				valid_states.append(None) 
 			else:
 				valid_states.append(newstate)
