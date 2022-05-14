@@ -1,5 +1,6 @@
 import heapq as heap #For queueing
 import copy
+import time
 
 #Main function for taking inputs regarding mode of puzzle
 def main():
@@ -133,12 +134,14 @@ def choose_search_method(start_state, final_state):
 
 	search_type = input()
 
-	if(search_type == '1'):
-		uniform_cost_search(start_state, final_state)
-	elif(search_type == '2'):
-		astar_manhattan(start_state, final_state)
-	elif(search_type == '3'):
-		astar_misplaced_tile(start_state, final_state)
+	if(search_type > str(0) and search_type < str(4)):
+		#Referred https://stackoverflow.com/a/14452178
+		#https://docs.python.org/3/library/time.html#time.process_time
+		start = time.process_time()
+		tree_and_heap_computation(start_state, final_state, search_type)
+		print(time.process_time() - start) 
+		print('milliseconds taken')
+
 	else:
 		print('Please enter a valid input!\n')
 		print('Enter 1 to return to the main menu. Press 2 to return to the default mode menu. Press any other key to restart the search method menu!\n')
@@ -150,7 +153,76 @@ def choose_search_method(start_state, final_state):
 		elif(wrong_input_2 == '2'):
 			default_mode()
 		else:
-			choose_search_method(start_state)
+			choose_search_method(start_state, final_state)
+
+def tree_and_heap_computation(start_state, final_state, search_type):
+
+	parent1 = Node(curr_state = start_state) #Making a root node from the starting state
+	queue = [ ]
+	heap.heappush(queue,parent1) #Add the first node to our heap (Acting as a priority queue)
+
+	visited_states = []
+	
+	num_nodes_expanded = 0 #Since no node has been EXPANDED yet
+	max_nodes_in_queue = 1 #Since we have already added root to the queue
+
+	while(queue):
+
+		if max_nodes_in_queue < len(queue):
+			max_nodes_in_queue = len(queue)
+
+		curr_node = heap.heappop(queue)
+
+		print('The best state for expanding with g(n) = ' , str(int(curr_node.g)), 'and h(n) = ', str(int(curr_node.g)), 'is : \n')
+		
+		curr_node_state = curr_node.curr_state
+		for el in curr_node_state:
+			print('[', *el, ']')
+
+		if(state_equality(curr_node_state, final_state)): #If this is our goal state
+			print('Solution found! Here are the nodes and the order in which they were expanded for this solution: \n')
+			curr_node.print_nodes_traced()
+			print('Max no of elements in queue: ' , max_nodes_in_queue, 'and number of nodes expanded: ', num_nodes_expanded, '\n')
+			return num_nodes_expanded, max_nodes_in_queue
+		
+		else:
+			visited_states.append(curr_node) #Add the current state to the list of states we have already checked
+			child_list = curr_node.tile_operators()
+			
+			#Remove null values from this list (if any) and if there are no other values in list, continue
+			#Referred https://www.geeksforgeeks.org/python-remove-none-values-from-list/
+			updated_child_list = [el for el in child_list if el]
+
+			if(updated_child_list == [ ]):
+				continue
+
+			for newchildstate in updated_child_list:
+				newchildnode = Node(curr_state = newchildstate, g=0, h=0)
+
+				#If this new child node already exists in our queue or already has been visited, we can just continue and don't need to do further calculations for this node
+				#LIMITING REPEATED STATES
+				if(queue and newchildnode in queue):
+					continue
+				elif(visited_states and newchildnode in visited_states):
+					continue 
+				else:
+					if(search_type == str(1)):
+						newchildnode.h = 0 #Uniform Cost Search
+					elif(search_type == str(2)):
+						newchildnode.h = manhattan_distance(newchildnode.curr_state,final_state) #AStar with Manhattan Distance heuristic
+					else:
+						newchildnode.h = count_misplaced_tiles(newchildnode.curr_state, final_state) #AStar with Misplaced Tile heuristic
+
+				curr_node.add_as_child_node(node = newchildnode)
+
+				heap.heappush(queue,newchildnode)
+
+			num_nodes_expanded += 1
+
+
+	print('No solution found! :( \n')
+	return False
+
 
 def count_misplaced_tiles(start_state, final_state):
 	heuristic = 0
@@ -180,28 +252,37 @@ def manhattan_distance(start_state, final_state):
 
 	return heuristic
 
+def state_equality(state1, state2):
+	#Referred : https://stackoverflow.com/questions/952914/how-to-make-a-flat-list-out-of-a-list-of-lists
+    # Flatten the list of lists for easy comparison
+    result_list1 = [el for subel in state1 for el in subel]
+    result_list2 = [el for subel in state2 for el in subel]
+    
+    return result_list1 == result_list2
 
 class Node:
 	
 	def __init__(self,h=0,g=0,curr_state=0,parent=None):
-		"""
-		Here, h = Cost to goal, g = Cost from start, curr_state = current state of the puzzle
-		"""
+		#Here, h = Cost to goal, g = Cost from start, curr_state = current state of the puzzle
 		self.h = h
 		self.g = g
 		self.curr_state = curr_state #Current state of the puzzle, changes after every operation
 		self.parent = parent #Added for ease of tracing later on
 		self.children = []
-		self.f = h+g
+
+	def add_as_child_node(self, node, cost=1): #Here cost of 1 is the cost to expand this node
+		node.g = self.g + cost # extend the child'd cost from start
+		self.children.append(node)
+		node.parent = self
 
 
 	#Function to print and count no. of nodes traced till result using the parent node of each child selected
 	def print_nodes_traced(self):
 
-		x = self.curr_state
+		x = self
 		trace = 0
 		
-		while(x != None):
+		while(x):
 			print(x.curr_state)
 			trace += 1
 			x = x.parent
@@ -209,11 +290,20 @@ class Node:
 		print('Number of nodes traced : ' , trace, '\n')
 
 	#Referred https://stackoverflow.com/questions/1061283/lt-instead-of-cmp 
-	#Function to compare costs of two nodes and return lowest cost
+	#Referred https://stackoverflow.com/a/7803240
+	#Function to compare costs of two nodes, used to sort nodes in the heap by cost
 	def __lt__(self,other):
-		return self.f < other.f
+		return self.g + self.h < other.g + other.h
 
+	#Function to calculate the total f value as h+g
+	def f_calculator(self):
+		return (self.g + self.f)
 
+	#Like lt function, this is used to compare equality of nodes in the heap
+	def __eq__(self,other):
+		return self.curr_state == other.curr_state
+
+	#Function to define movements of the 0 tile
 	def tile_operators(self):
 		valid_states = []
 		puzzle = self.curr_state
@@ -236,68 +326,47 @@ class Node:
 		if(n!=0):
 			newstate = copy.deepcopy(puzzle)
 			newstate[m][n] = newstate[m][n-1]
-        	newstate[m][n-1] = 0
+			newstate[m][n-1] = 0
 
-        	#Check if this state is same as it's parent and add only if false
-        	#Referenced https://stackoverflow.com/a/6105826 to convert state to set for ease of comparison
-
-        	newstatelist = set(map(tuple, newstate))
-        	parentlist = set(map(tuple, self.parent.curr_state))
-
-        	if(newstatelist != parentlist):
-        		valid_states.append(newstate)
+        	#Check if this state is same as it's parent, parent is not null and add only if false
+			if (self.parent and state_equality(newstate, self.parent.curr_state)):
+				valid_states.append(None) 
+			else:
+				valid_states.append(newstate)
 
         #Moving up		
-        if(m!=0):
-        	newstate = copy.deepcopy(puzzle)
+		if(m!=0):
+			newstate = copy.deepcopy(puzzle)
 			newstate[m][n] = newstate[m-1][n]
-        	newstate[m-1][n] = 0
+			newstate[m-1][n] = 0
 
-        	#Check if this state is same as it's parent and add only if false
-        	#Referenced https://stackoverflow.com/a/6105826 to convert state to set for ease of comparison
-
-        	newstatelist = set(map(tuple, newstate))
-        	parentlist = set(map(tuple, self.parent.curr_state))
-
-        	if(newstatelist != parentlist):
-        		valid_states.append(newstate)
+			if (self.parent and state_equality(newstate, self.parent.curr_state)):
+				valid_states.append(None)
+			else:
+				valid_states.append(newstate)
 
         #Moving Right
-        if(n!=(len(puzzle)-1)):
-        	newstate = copy.deepcopy(puzzle)
+		if(n!=(len(puzzle)-1)):
+			newstate = copy.deepcopy(puzzle)
 			newstate[m][n] = newstate[m][n+1]
-        	newstate[m][n+1] = 0
-
-        	#Check if this state is same as it's parent and add only if false
-        	#Referenced https://stackoverflow.com/a/6105826 to convert state to set for ease of comparison
-
-        	newstatelist = set(map(tuple, newstate))
-        	parentlist = set(map(tuple, self.parent.curr_state))
-
-        	if(newstatelist != parentlist):
-        		valid_states.append(newstate)
+			newstate[m][n+1] = 0
+			if (self.parent and state_equality(newstate, self.parent.curr_state)):
+				valid_states.append(None) 
+			else:
+				valid_states.append(newstate)
 
         #Moving Down
-        if(m!=(len(puzzle)-1)):
-        	newstate = copy.deepcopy(puzzle)
+		if(m!=(len(puzzle)-1)):
+			newstate = copy.deepcopy(puzzle)
 			newstate[m][n] = newstate[m+1][n]
-        	newstate[m+1][n] = 0
+			newstate[m+1][n] = 0
 
-        	#Check if this state is same as it's parent and add only if false
-        	#Referenced https://stackoverflow.com/a/6105826 to convert state to set for ease of comparison
+			if (self.parent and state_equality(newstate, self.parent.curr_state)):
+				valid_states.append(None) 
+			else:
+				valid_states.append(newstate)
 
-        	newstatelist = set(map(tuple, newstate))
-        	parentlist = set(map(tuple, self.parent.curr_state))
-
-        	if(newstatelist != parentlist):
-        		valid_states.append(newstate)
-
-
-
-        return valid_states
-
-
-
+		return valid_states
 
 
 main()
